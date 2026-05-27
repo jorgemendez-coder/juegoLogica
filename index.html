@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>LOGIX — Batalla de Proposiciones</title>
 
 <style>
@@ -10,14 +13,11 @@
 :root{
   --bg:#0a0a0f;
   --surface:#13131f;
-  --card:#1a1a2e;
   --border:#2a2a4a;
   --true:#00e5a0;
   --false:#ff3e6c;
   --neutral:#7b7bff;
-  --gold:#ffd700;
   --text:#e8e8ff;
-  --muted:#6666aa;
 }
 
 *{
@@ -79,7 +79,7 @@ body{
 
 .game{
   display:grid;
-  grid-template-columns:1fr 300px;
+  grid-template-columns:1fr 320px;
   gap:20px;
 }
 
@@ -130,15 +130,16 @@ body{
 
 .log{
   margin-top:20px;
-  max-height:250px;
+  max-height:450px;
   overflow:auto;
 }
 
 .log div{
   background:#111;
   margin-bottom:8px;
-  padding:8px;
+  padding:10px;
   border-radius:5px;
+  white-space:pre-line;
 }
 
 .truth{
@@ -149,7 +150,13 @@ body{
   color:var(--false);
 }
 
+.tutorial{
+  margin-top:25px;
+  line-height:1.8;
+}
+
 </style>
+
 </head>
 
 <body>
@@ -165,6 +172,49 @@ body{
   <button class="btn btn-primary" onclick="startGame()">
     COMENZAR PARTIDA
   </button>
+
+  <div class="panel tutorial">
+
+    <h2>¿Cómo jugar?</h2>
+
+    <br>
+
+    <p>
+      Construye fórmulas lógicas usando:
+    </p>
+
+    <br>
+
+    <p>¬ = Negación</p>
+    <p>∧ = Conjunción</p>
+    <p>∨ = Disyunción</p>
+    <p>→ = Implicación</p>
+    <p>↔ = Bicondicional</p>
+
+    <br>
+
+    <p>
+      ATACAR:
+      usa fórmulas verdaderas para dañar.
+    </p>
+
+    <p>
+      DEFENDER:
+      usa fórmulas verdaderas para activar escudo.
+    </p>
+
+    <p>
+      DEDUCIR:
+      adivina valores del rival.
+    </p>
+
+    <br>
+
+    <p>
+      Gana el jugador que reduzca la vida del rival a 0.
+    </p>
+
+  </div>
 
 </div>
 
@@ -182,7 +232,9 @@ body{
 
         <br>
 
-        <h3>Jugador actual</h3>
+        <h3 id="playerTitle">
+          Jugador actual
+        </h3>
 
         <div id="myProps"></div>
 
@@ -251,7 +303,7 @@ body{
 
     <div class="panel">
 
-      <h3>Registro</h3>
+      <h3>Registro Matemático</h3>
 
       <div id="log" class="log"></div>
 
@@ -310,7 +362,6 @@ function startGame(){
   showScreen('screen-game');
 
   render();
-
 }
 
 function showScreen(id){
@@ -344,6 +395,10 @@ function render(){
   document.getElementById('enemyHp')
   .style.width =
   enemy.hp + '%';
+
+  document.getElementById('playerTitle')
+  .innerHTML =
+  `Jugador actual ${me.shield ? '🛡️' : ''}`;
 
   document.getElementById('myProps')
   .innerHTML =
@@ -393,6 +448,42 @@ function clearFormula(){
   game.formula='';
 
   render();
+}
+
+function validateFormula(formula){
+
+  if(formula.trim()===''){
+    return false;
+  }
+
+  let balance = 0;
+
+  const invalid =
+  ['∧∧','∨∨','→→','↔↔'];
+
+  for(let x of invalid){
+
+    if(formula.includes(x)){
+      return false;
+    }
+  }
+
+  for(let c of formula){
+
+    if(c==='(') balance++;
+
+    if(c===')') balance--;
+
+    if(balance<0){
+      return false;
+    }
+  }
+
+  if(balance!==0){
+    return false;
+  }
+
+  return true;
 }
 
 function tokenize(str){
@@ -524,8 +615,10 @@ function parseFormula(formula, vals){
 
 function attack(){
 
-  if(game.formula===''){
-    alert('Construye una fórmula');
+  if(!validateFormula(game.formula)){
+
+    alert('Fórmula inválida');
+
     return;
   }
 
@@ -543,6 +636,11 @@ function attack(){
       enemy.props
     );
 
+    const values =
+`p=${enemy.props.p?'V':'F'}
+q=${enemy.props.q?'V':'F'}
+r=${enemy.props.r?'V':'F'}`;
+
     if(result){
 
       let damage = 20;
@@ -557,23 +655,38 @@ function attack(){
       enemy.hp -= damage;
 
       addLog(
-        `Ataque verdadero: -${damage} HP`,
-        true
-      );
+`${game.formula}
+
+RESULTADO:
+VERDADERA
+
+${values}
+
+Daño:
+-${damage} HP`,
+true
+);
 
     }else{
 
       me.hp -= 10;
 
       addLog(
-        `Ataque falso: pierdes 10 HP`,
-        false
-      );
+`${game.formula}
+
+RESULTADO:
+FALSA
+
+${values}
+
+Pierdes 10 HP`,
+false
+);
     }
 
   }catch{
 
-    alert('Fórmula inválida');
+    alert('Error lógico');
 
     return;
   }
@@ -583,8 +696,10 @@ function attack(){
 
 function defend(){
 
-  if(game.formula===''){
-    alert('Construye una fórmula');
+  if(!validateFormula(game.formula)){
+
+    alert('Fórmula inválida');
+
     return;
   }
 
@@ -604,21 +719,27 @@ function defend(){
       me.shield=true;
 
       addLog(
-        'Escudo activado',
-        true
-      );
+`DEFENSA EXITOSA
+
+${game.formula}
+
+Escudo activado`,
+true
+);
 
     }else{
 
       addLog(
-        'Defensa fallida',
-        false
-      );
+`DEFENSA FALLIDA
+
+${game.formula}`,
+false
+);
     }
 
   }catch{
 
-    alert('Fórmula inválida');
+    alert('Error lógico');
 
     return;
   }
@@ -633,31 +754,53 @@ function deduce(){
 
   const props=['p','q','r'];
 
-  const hidden =
-  props.filter(p=>!enemy.revealed[p]);
+  const prop =
+  prompt(
+  '¿Qué variable quieres deducir? (p,q,r)'
+  );
 
-  if(hidden.length===0){
+  if(!props.includes(prop)){
 
-    alert('Todo revelado');
+    alert('Variable inválida');
 
     return;
   }
 
-  const prop =
-  hidden[Math.floor(Math.random()*hidden.length)];
-
-  enemy.revealed[prop]=true;
-
-  alert(
-    prop +
-    ' = ' +
-    (enemy.props[prop]?'VERDADERO':'FALSO')
+  const guess =
+  prompt(
+  '¿Crees que es V o F?'
   );
 
-  addLog(
-    `Revelado ${prop}`,
-    true
-  );
+  const real =
+  enemy.props[prop] ? 'V' : 'F';
+
+  const me =
+  game.players[game.currentPlayer];
+
+  if(guess===real){
+
+    enemy.revealed[prop]=true;
+
+    addLog(
+`DEDUCCIÓN CORRECTA
+
+${prop}=${real}`,
+true
+);
+
+  }else{
+
+    me.hp -= 5;
+
+    addLog(
+`DEDUCCIÓN INCORRECTA
+
+${prop}=${real}
+
+Pierdes 5 HP`,
+false
+);
+  }
 
   endTurn();
 }
